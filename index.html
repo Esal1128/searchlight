@@ -15,6 +15,30 @@
     --body:"Noto Sans JP","Space Grotesk",system-ui,sans-serif;
     --mono:"JetBrains Mono",ui-monospace,monospace;
   }
+  body.dark{
+    --paper:#17181B;--paper-2:#1E1F23;--ink:#ECEAE4;--ink-2:#B6B4AD;
+    --muted:#86857C;--muted-2:#55554F;--line:#2C2D32;--accent:#E0694D;
+  }
+  body,.frame,.nav,.chrome,.mobilebar,.nitem,.detail-panel,.fab,.note,.hi,.sitem,
+  .srccol,input,.conn-btn,.toggle,.pdot{transition:background-color .25s ease,color .25s ease,border-color .25s ease}
+
+  /* theme toggle button (moon / sun) */
+  .theme-toggle{border:none;background:none;cursor:pointer;color:var(--muted);padding:5px;
+    display:flex;align-items:center;justify-content:center;border-radius:8px}
+  .theme-toggle:hover{color:var(--ink);background:rgba(128,128,128,.08)}
+  .theme-toggle svg{width:19px;height:19px}
+  .theme-toggle .ic-sun{display:none}
+  body.dark .theme-toggle .ic-moon{display:none}
+  body.dark .theme-toggle .ic-sun{display:block}
+
+  /* connection button (settings) */
+  .conn-btn{display:flex;align-items:center;gap:7px;font-family:var(--body);font-size:12px;
+    padding:8px 14px;border-radius:8px;cursor:pointer;border:1px solid var(--line);
+    background:transparent;color:var(--ink-2)}
+  .conn-btn:hover{border-color:var(--ink-2)}
+  .conn-btn .dot{width:6px;height:6px;border-radius:50%;background:var(--muted-2)}
+  .conn-btn.connected{background:var(--accent);border-color:var(--accent);color:#fff}
+  .conn-btn.connected .dot{background:#fff}
   *{box-sizing:border-box;margin:0;padding:0}
   body{background:var(--paper);font-family:var(--body);color:var(--ink);font-weight:400;
     min-height:100vh;display:flex;align-items:stretch;justify-content:center;padding:0;-webkit-font-smoothing:antialiased}
@@ -202,7 +226,7 @@
     .mb-brand{display:flex;align-items:center;gap:9px}
     .mb-brand svg{width:24px;height:24px}
     .mb-brand .name{font-family:var(--display);font-weight:500;font-size:17px}
-    .mb-ava{margin-left:auto;width:30px;height:30px;border-radius:50%;background:var(--ink)}
+    .mb-ava{margin-left:0;width:30px;height:30px;border-radius:50%;background:var(--ink)}
 
     /* nav becomes off-canvas drawer */
     .nav{position:fixed;top:0;left:0;bottom:0;width:248px;z-index:50;background:var(--paper);
@@ -279,9 +303,15 @@
   <div class="chrome"><div class="dots"><i></i><i></i><i></i></div><div class="urlbar">app.searchlight.ai</div><div style="width:50px"></div></div>
   <div class="layout">
     <nav class="nav">
-      <div class="brand">
-        <svg class="logo" viewBox="0 0 40 40" fill="none" stroke="var(--ink)"><circle cx="20" cy="20" r="18.5" stroke-width="1.3"/><circle cx="14" cy="17" r="5.5" stroke-width="1.6"/><circle cx="26" cy="17" r="5.5" stroke-width="1.6"/><circle cx="14" cy="17" r="1.8" fill="var(--ink)" stroke="none"/><circle cx="26" cy="17" r="1.8" fill="var(--ink)" stroke="none"/><path d="M16 27 q4 3 8 0" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>
-        <div class="name">Searchlight</div>
+      <div class="brand" style="justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:10px">
+          <svg class="logo" viewBox="0 0 40 40" fill="none" stroke="var(--ink)"><circle cx="20" cy="20" r="18.5" stroke-width="1.3"/><circle cx="14" cy="17" r="5.5" stroke-width="1.6"/><circle cx="26" cy="17" r="5.5" stroke-width="1.6"/><circle cx="14" cy="17" r="1.8" fill="var(--ink)" stroke="none"/><circle cx="26" cy="17" r="1.8" fill="var(--ink)" stroke="none"/><path d="M16 27 q4 3 8 0" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>
+          <div class="name">Searchlight</div>
+        </div>
+        <button class="theme-toggle" data-theme-toggle aria-label="テーマ切替">
+          <svg class="ic-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" stroke-linejoin="round"/></svg>
+          <svg class="ic-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8" stroke-linecap="round"/></svg>
+        </button>
       </div>
       <div class="nitem on" data-screen="dash"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M6 6l2 2M16 16l2 2M18 6l-2 2M8 16l-2 2"/><circle cx="12" cy="12" r="3.5"/></svg>ダッシュボード</div>
       <div class="nitem" data-screen="notes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 4h11l3 3v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M9 4v5h6"/></svg>ノート</div>
@@ -301,6 +331,10 @@
           <svg viewBox="0 0 40 40" fill="none" stroke="var(--ink)"><circle cx="20" cy="20" r="18.5" stroke-width="1.3"/><circle cx="14" cy="17" r="5.5" stroke-width="1.6"/><circle cx="26" cy="17" r="5.5" stroke-width="1.6"/><circle cx="14" cy="17" r="1.8" fill="var(--ink)" stroke="none"/><circle cx="26" cy="17" r="1.8" fill="var(--ink)" stroke="none"/><path d="M16 27 q4 3 8 0" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>
           <span class="name">Searchlight</span>
         </div>
+        <button class="theme-toggle" data-theme-toggle aria-label="テーマ切替" style="margin-left:auto">
+          <svg class="ic-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" stroke-linejoin="round"/></svg>
+          <svg class="ic-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8" stroke-linecap="round"/></svg>
+        </button>
         <div class="mb-ava"></div>
       </div>
 
@@ -392,15 +426,15 @@
         <div class="settings">
           <div class="prof"><div class="pa"></div><div><div class="pn">リサーチャー</div><div class="pe">researcher@searchlight.ai</div></div></div>
           <div class="sgrp">エンジン連携</div>
-          <div class="sitem"><div class="si-c"><div class="si-t">Gemini ・ 収集</div><div class="si-s">Deep Research / 情報収集</div></div><span class="conn"><span class="d"></span>接続済み</span></div>
-          <div class="sitem"><div class="si-c"><div class="si-t">Claude ・ 整形・検証</div><div class="si-s">事実検証 / 構造化</div></div><span class="conn"><span class="d"></span>接続済み</span></div>
-          <div class="sitem"><div class="si-c"><div class="si-t">Obsidian ・ ノート化</div><div class="si-s">vault に自動保存（/Documents/Obsidian）</div></div><span class="conn"><span class="d"></span>接続済み</span></div>
+          <div class="sitem"><div class="si-c"><div class="si-t">Gemini ・ 収集</div><div class="si-s">Deep Research / 情報収集</div></div><button class="conn-btn connected" data-engine="gemini"><span class="dot"></span><span class="label">接続済み</span></button></div>
+          <div class="sitem"><div class="si-c"><div class="si-t">Claude ・ 整形・検証</div><div class="si-s">事実検証 / 構造化</div></div><button class="conn-btn connected" data-engine="claude"><span class="dot"></span><span class="label">接続済み</span></button></div>
+          <div class="sitem"><div class="si-c"><div class="si-t">Obsidian ・ ノート化</div><div class="si-s">vault に自動保存（/Documents/Obsidian）</div></div><button class="conn-btn" data-engine="obsidian"><span class="dot"></span><span class="label">接続</span></button></div>
           <div class="sgrp">リサーチ設定</div>
           <div class="sitem"><div class="si-c"><div class="si-t">リサーチの深さ</div><div class="si-s">標準（最大200ソース）</div></div><span class="val">標準 ▾</span></div>
           <div class="sitem"><div class="si-c"><div class="si-t">完了後に自動でノート保存</div></div><div class="toggle"></div></div>
           <div class="sitem"><div class="si-c"><div class="si-t">検証ステップを常に通す</div></div><div class="toggle"></div></div>
           <div class="sgrp">表示</div>
-          <div class="sitem"><div class="si-c"><div class="si-t">テーマ</div><div class="si-s">ライト（ミニマル）</div></div><span class="val">ライト ▾</span></div>
+          <div class="sitem"><div class="si-c"><div class="si-t">ダークモード</div><div class="si-s" id="themeVal">現在：ライト（ミニマル）</div></div><div class="toggle off" id="darkToggle"></div></div>
         </div>
       </section>
     </div>
@@ -527,6 +561,31 @@
   // close bottom sheet (mobile)
   if(sheetOverlay){ sheetOverlay.addEventListener('click', closeSheet); }
   document.querySelectorAll('.sheet-close').forEach(function(b){ b.addEventListener('click', closeSheet); });
+
+  // ----- theme (dark / light) -----
+  function setTheme(dark){
+    document.body.classList.toggle('dark', dark);
+    var t = document.getElementById('darkToggle');
+    if(t) t.classList.toggle('off', !dark);
+    var lbl = document.getElementById('themeVal');
+    if(lbl) lbl.textContent = '現在：' + (dark ? 'ダーク（ミニマル）' : 'ライト（ミニマル）');
+    try{ localStorage.setItem('sl-theme', dark ? 'dark' : 'light'); }catch(e){}
+  }
+  function toggleTheme(){ setTheme(!document.body.classList.contains('dark')); }
+  document.querySelectorAll('[data-theme-toggle]').forEach(function(b){ b.addEventListener('click', toggleTheme); });
+  var dt = document.getElementById('darkToggle');
+  if(dt){ dt.addEventListener('click', toggleTheme); }
+  // restore saved theme
+  try{ if(localStorage.getItem('sl-theme') === 'dark') setTheme(true); }catch(e){}
+
+  // ----- connection buttons (demo toggle; real auth handled in Claude Code) -----
+  document.querySelectorAll('.conn-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var on = btn.classList.toggle('connected');
+      var lab = btn.querySelector('.label');
+      if(lab) lab.textContent = on ? '接続済み' : '接続';
+    });
+  });
 </script>
 </body>
 </html>
