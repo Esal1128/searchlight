@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Searchlight — minimal desktop (prototype)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F7F6F3;--paper-2:#FBFAF8;--ink:#1A1B1A;--ink-2:#52544F;
+    --muted:#8C8E87;--muted-2:#B6B7B0;--line:#E7E5DF;--accent:#C2462D;
+    --display:"Space Grotesk","Noto Sans JP",system-ui,sans-serif;
+    --body:"Noto Sans JP","Space Grotesk",system-ui,sans-serif;
+    --mono:"JetBrains Mono",ui-monospace,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--paper);font-family:var(--body);color:var(--ink);font-weight:400;
+    min-height:100vh;display:flex;align-items:stretch;justify-content:center;padding:0;-webkit-font-smoothing:antialiased}
+  .frame{width:100%;max-width:none;border-radius:0;overflow:hidden;background:var(--paper);
+    min-height:100vh;display:flex;flex-direction:column}
+  .chrome{display:flex;align-items:center;gap:14px;padding:13px 18px;background:var(--paper-2);border-bottom:1px solid var(--line)}
+  .dots{display:flex;gap:8px}.dots i{width:11px;height:11px;border-radius:50%;background:var(--muted-2);display:block}
+  .urlbar{flex:1;max-width:360px;margin:0 auto;font-family:var(--mono);font-size:12px;color:var(--muted);text-align:center;letter-spacing:.3px}
+  .layout{display:grid;grid-template-columns:212px 1fr;min-height:720px;flex:1}
+
+  .nav{border-right:1px solid var(--line);padding:26px 18px;display:flex;flex-direction:column}
+  .brand{display:flex;align-items:center;gap:10px;padding:0 8px;margin-bottom:38px}
+  .logo{width:25px;height:25px;display:block}
+  .brand .name{font-family:var(--display);font-weight:500;font-size:18px;letter-spacing:.2px}
+  .nitem{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:9px;cursor:pointer;font-size:13.5px;color:var(--muted);margin-bottom:3px;transition:.15s}
+  .nitem svg{width:18px;height:18px;flex:none;stroke-width:1.7}
+  .nitem:hover{color:var(--ink-2);background:rgba(0,0,0,.02)}
+  .nitem.on{color:var(--ink);font-weight:500;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+  .nitem.on svg{color:var(--accent)}
+  .nav .spacer{flex:1}
+  .nuser{display:flex;align-items:center;gap:11px;padding:10px 8px;border-top:1px solid var(--line);margin-top:10px}
+  .nuser .pa{width:30px;height:30px;border-radius:50%;background:var(--ink);flex:none}
+  .nuser .nu-t{font-size:12.5px;font-weight:500}
+  .nuser .nu-s{font-family:var(--mono);font-size:9.5px;color:var(--muted-2);margin-top:2px}
+
+  .content{position:relative;overflow:hidden}
+  .screen{display:none;padding:34px 44px 44px}
+  .screen.active{display:block}
+  .scr-title{font-family:var(--display);font-weight:600;font-size:24px;letter-spacing:.2px;margin-bottom:28px}
+
+  /* mobile-only chrome (hidden on desktop) */
+  .mobilebar{display:none}
+  .overlay{display:none}
+  .fab{display:none}
+  .sheet-handle{display:none}
+  .sheet-overlay{display:none}
+  @keyframes dotblink{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.82)}}
+
+  /* dashboard */
+  .dash{display:grid;grid-template-columns:1fr 262px;gap:40px}
+  .search{display:flex;align-items:center;border-bottom:1px solid var(--ink);padding-bottom:13px;margin-bottom:26px}
+  .search svg{width:18px;height:18px;color:var(--muted);flex:none}
+  .search input{flex:1;border:none;outline:none;background:none;font-family:var(--body);font-size:15px;color:var(--ink);margin-left:13px}
+  .search input::placeholder{color:var(--muted-2);font-weight:300}
+  .search .go{border:none;background:none;cursor:pointer;font-family:var(--display);font-weight:500;font-size:13px;color:var(--accent);display:flex;align-items:center;gap:6px}
+  .search .go svg{width:13px;height:13px;color:var(--accent)}
+
+  /* pipeline : light flows only on the active segment */
+  .pstrip{display:flex;align-items:center;margin-bottom:30px;padding:18px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .ppath{position:relative;display:flex;align-items:center;flex:1}
+  .pst{display:flex;align-items:center;gap:10px;position:relative;z-index:2}
+  .pdot{width:10px;height:10px;border-radius:50%;border:1px solid var(--muted-2);background:var(--paper);flex:none}
+  .pdot.done{background:var(--ink);border-color:var(--ink)}
+  .pdot.active{background:var(--accent);border-color:var(--accent)}
+  .pst .pl{font-size:12.5px;font-weight:500}
+  .pst .pl i{font-style:normal;font-family:var(--mono);font-size:9px;color:var(--muted-2);margin-left:6px;letter-spacing:.5px}
+  .pst.idle .pl{color:var(--muted)}
+  .pline{flex:1;height:1px;background:var(--line);margin:0 16px;position:relative;overflow:hidden}
+  .pline.flowing::after{content:"";position:absolute;top:-0.5px;height:2px;width:36%;left:-36%;border-radius:2px;
+    background:linear-gradient(90deg,transparent,var(--accent),transparent);
+    animation:segflow 1.9s linear infinite}
+  @keyframes segflow{0%{left:-36%}100%{left:100%}}
+  .ptag{margin-left:24px;font-family:var(--mono);font-size:10px;color:var(--muted);white-space:nowrap}
+  .ptag b{color:var(--ink);font-weight:500}
+
+  .meta-row{display:flex;align-items:center;gap:12px;margin-bottom:22px;font-family:var(--mono);font-size:11px;color:var(--muted)}
+  .meta-row .k{color:var(--accent);letter-spacing:1px}
+  .meta-row .acts{margin-left:auto;display:flex;gap:18px}.meta-row .acts a{color:var(--muted);cursor:pointer}
+  .title{font-family:var(--display);font-weight:600;font-size:27px;line-height:1.4;margin-bottom:30px}
+  .hl{margin-bottom:38px}
+  .hl .hh{font-family:var(--mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted-2);margin-bottom:16px}
+  .hl ul{list-style:none;display:flex;flex-direction:column;gap:14px}
+  .hl li{position:relative;padding-left:24px;font-size:14.5px;line-height:1.65;color:var(--ink-2)}
+  .hl li::before{content:"";position:absolute;left:0;top:11px;width:13px;height:1px;background:var(--accent)}
+  .sec{font-family:var(--mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted-2);margin-bottom:14px}
+  .lead{font-size:13.5px;line-height:1.95;color:var(--ink-2);font-weight:300}
+  .ptcard{display:flex;gap:14px;padding:16px 0;border-top:1px solid var(--line)}
+  .ptcard .pn{font-family:var(--mono);font-size:11px;color:var(--accent);flex:none;padding-top:2px}
+  .ptcard .ph{font-size:14px;font-weight:500;margin-bottom:6px}
+  .ptcard p{font-size:12px;line-height:1.7;color:var(--muted);font-weight:300}
+  .srccol .sh{display:flex;align-items:baseline;gap:8px;margin-bottom:20px}
+  .srccol .sh .e{font-family:var(--mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted-2)}
+  .srccol .sh b{font-size:13px}
+  .si{padding:15px 0;border-bottom:1px solid var(--line)}
+  .si .st{font-size:12px;line-height:1.5;color:var(--ink-2)}
+  .si .num{font-family:var(--mono);font-size:10px;color:var(--accent);margin-right:7px}
+  .si .so{font-family:var(--mono);font-size:9.5px;color:var(--muted-2);margin-top:5px}
+
+  /* notes / history : list + detail panel */
+  .detail-layout{display:grid;grid-template-columns:1fr 388px;gap:38px}
+  .filter{display:flex;gap:22px;margin-bottom:8px;border-bottom:1px solid var(--line)}
+  .fbtn{font-size:13px;color:var(--muted);padding-bottom:12px;position:relative;cursor:pointer}
+  .fbtn.on{color:var(--ink);font-weight:500}
+  .fbtn.on::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:1px;background:var(--ink)}
+  .note{padding:20px 14px 20px 0;border-bottom:1px solid var(--line);cursor:pointer;position:relative;transition:.15s}
+  .note::before{content:"";position:absolute;left:-14px;top:50%;transform:translateY(-50%);width:2px;height:0;background:var(--accent);transition:height .18s}
+  .note:hover .nt{color:var(--accent)}
+  .note.selected::before{height:60%}
+  .note.selected{padding-left:14px}
+  .note .nt{font-size:15.5px;font-weight:500;line-height:1.5;margin-bottom:10px;transition:.15s}
+  .note .mrow{display:flex;align-items:center;gap:11px;font-family:var(--mono);font-size:10.5px;color:var(--muted);flex-wrap:wrap}
+  .note .tag{color:var(--accent)}.note .dot{color:var(--muted-2)}
+
+  .daygrp{font-family:var(--mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted-2);margin:30px 0 4px}
+  .daygrp:first-child{margin-top:0}
+  .hi{padding:17px 14px 17px 0;border-bottom:1px solid var(--line);display:flex;align-items:baseline;gap:18px;cursor:pointer;position:relative;transition:.15s}
+  .hi::before{content:"";position:absolute;left:-14px;top:50%;transform:translateY(-50%);width:2px;height:0;background:var(--accent);transition:height .18s}
+  .hi.selected::before{height:55%}.hi.selected{padding-left:14px}
+  .hi:hover .q{color:var(--accent)}
+  .hi .tm{font-family:var(--mono);font-size:11px;color:var(--muted);flex:none;width:48px}
+  .hi .q{font-size:14px;color:var(--ink);transition:.15s}
+  .hi .sub{font-family:var(--mono);font-size:10px;color:var(--muted-2);margin-left:auto;flex:none}
+
+  /* detail panel */
+  .detail-panel{border-left:1px solid var(--line);padding-left:34px;position:relative}
+  .detail-empty{font-family:var(--mono);font-size:11px;color:var(--muted-2);letter-spacing:.5px;line-height:1.8;padding-top:8px}
+  .detail-content{display:none}
+  .detail-panel.has-content .detail-empty{display:none}
+  .detail-panel.has-content .detail-content{display:block;animation:fade .25s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .d-eyebrow{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:16px}
+  .d-eyebrow .st{color:var(--accent)}
+  .d-title{font-family:var(--display);font-weight:600;font-size:19px;line-height:1.4;margin-bottom:24px}
+  .d-sec{font-family:var(--mono);font-size:9.5px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted-2);margin-bottom:12px}
+  .d-hl{list-style:none;display:flex;flex-direction:column;gap:11px;margin-bottom:28px}
+  .d-hl li{position:relative;padding-left:20px;font-size:13px;line-height:1.6;color:var(--ink-2)}
+  .d-hl li::before{content:"";position:absolute;left:0;top:9px;width:11px;height:1px;background:var(--accent)}
+  .d-lead{font-size:12.5px;line-height:1.9;color:var(--ink-2);font-weight:300;margin-bottom:28px}
+  .d-pt{padding:13px 0;border-top:1px solid var(--line)}
+  .d-pt .h{font-size:13px;font-weight:500;margin-bottom:5px}
+  .d-pt p{font-size:11.5px;line-height:1.65;color:var(--muted);font-weight:300}
+  .d-src{padding:11px 0;border-bottom:1px solid var(--line);font-size:11.5px;color:var(--ink-2)}
+  .d-src .num{font-family:var(--mono);font-size:9.5px;color:var(--accent);margin-right:6px}
+  .d-src .so{font-family:var(--mono);font-size:9px;color:var(--muted-2);margin-top:3px}
+  .d-actions{display:flex;gap:10px;margin-top:26px}
+  .d-btn{font-family:var(--body);font-size:11.5px;padding:9px 14px;border-radius:8px;cursor:pointer;border:1px solid var(--line);background:#fff;color:var(--ink-2);display:flex;align-items:center;gap:6px}
+  .d-btn.primary{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+  .d-btn svg{width:13px;height:13px}
+
+  /* settings */
+  .settings{max-width:640px}
+  .prof{display:flex;align-items:center;gap:16px;padding:4px 0 24px;border-bottom:1px solid var(--line);margin-bottom:8px}
+  .prof .pa{width:52px;height:52px;border-radius:50%;background:var(--ink)}
+  .prof .pn{font-size:17px;font-weight:500}.prof .pe{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:5px}
+  .sgrp{font-family:var(--mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted-2);margin:30px 0 6px}
+  .sitem{display:flex;align-items:center;gap:16px;padding:18px 0;border-bottom:1px solid var(--line)}
+  .sitem .si-c{flex:1}.sitem .si-t{font-size:14.5px}.sitem .si-s{font-family:var(--mono);font-size:10px;color:var(--muted-2);margin-top:5px}
+  .conn{font-family:var(--mono);font-size:10.5px;display:flex;align-items:center;gap:7px;color:var(--ink-2)}
+  .conn .d{width:6px;height:6px;border-radius:50%;background:var(--accent)}
+  .val{font-family:var(--mono);font-size:11.5px;color:var(--muted);cursor:pointer}
+  .toggle{width:40px;height:23px;border-radius:12px;background:var(--ink);position:relative;flex:none;cursor:pointer}
+  .toggle::after{content:"";position:absolute;top:2.5px;right:2.5px;width:18px;height:18px;border-radius:50%;background:var(--paper)}
+  .toggle.off{background:var(--line)}.toggle.off::after{left:2.5px;right:auto;background:var(--muted)}
+
+  @media (prefers-reduced-motion:reduce){.pline.flowing::after{animation:none;display:none}}
+
+  /* ===== responsive ===== */
+  /* tablet : stack the side columns */
+  @media (min-width:761px) and (max-width:1080px){
+    .dash{grid-template-columns:1fr}
+    .srccol{border-top:1px solid var(--line);padding-top:26px;margin-top:6px}
+    .detail-layout{grid-template-columns:1fr}
+    .detail-panel{border-left:none;padding-left:0}
+    /* before tapping, keep the list clean: panel appears below only after selection */
+    .detail-panel:not(.has-content){display:none}
+    .detail-panel.has-content{border-top:1px solid var(--line);padding-top:28px;margin-top:18px}
+  }
+  /* phone : nav becomes a top bar */
+  @media (max-width:760px){
+    body{display:block;padding:0;background:var(--paper)}
+    .frame{border-radius:0;overflow:visible;box-shadow:none;max-width:none;min-height:100vh;display:flex;flex-direction:column}
+    .chrome{display:none}
+    .layout{grid-template-columns:1fr;min-height:0;flex:1}
+    .content{overflow:visible}
+
+    /* dashboard: single column, sources stack below */
+    .dash{grid-template-columns:1fr;gap:0}
+    .srccol{border-top:1px solid var(--line);padding-top:24px;margin-top:26px}
+
+    /* mobile top bar */
+    .mobilebar{display:flex;align-items:center;gap:14px;padding:14px 16px;
+      border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--paper);z-index:20}
+    .hamburger{border:none;background:none;padding:4px;cursor:pointer;display:flex;color:var(--ink)}
+    .hamburger svg{width:24px;height:24px}
+    .mb-brand{display:flex;align-items:center;gap:9px}
+    .mb-brand svg{width:24px;height:24px}
+    .mb-brand .name{font-family:var(--display);font-weight:500;font-size:17px}
+    .mb-ava{margin-left:auto;width:30px;height:30px;border-radius:50%;background:var(--ink)}
+
+    /* nav becomes off-canvas drawer */
+    .nav{position:fixed;top:0;left:0;bottom:0;width:248px;z-index:50;background:var(--paper);
+      flex-direction:column;padding:26px 18px;border-right:1px solid var(--line);overflow-y:auto;
+      transform:translateX(-102%);transition:transform .26s cubic-bezier(.4,0,.2,1)}
+    .nav.open{transform:none;box-shadow:0 0 70px rgba(0,0,0,.3)}
+    .brand{margin-bottom:34px}.brand .name{display:block}
+    .nav .spacer{display:block}.nuser{display:flex}
+    .nitem{white-space:normal;padding:13px 12px;margin-bottom:3px;font-size:15px}
+
+    /* overlay + FAB */
+    .overlay{display:block;position:fixed;inset:0;background:rgba(20,20,20,.42);z-index:40;
+      opacity:0;pointer-events:none;transition:opacity .26s}
+    .overlay.show{opacity:1;pointer-events:auto}
+    .fab{display:flex;align-items:center;gap:8px;position:fixed;right:18px;bottom:22px;z-index:35;
+      border:none;cursor:pointer;padding:15px 21px;border-radius:30px;
+      background:var(--ink);color:var(--paper);font-family:var(--body);font-size:14px;font-weight:500;
+      box-shadow:0 10px 28px -6px rgba(0,0,0,.45)}
+    .fab svg{width:18px;height:18px}
+
+    .screen{padding:24px 20px 96px}
+    .scr-title{font-size:21px;margin-bottom:22px}
+    .title{font-size:22px}
+    .meta-row{flex-wrap:wrap}
+    .meta-row .acts{margin-left:0;width:100%}
+
+    /* pipeline : vertical, roomy, dot blinks (no flowing line) */
+    .pstrip{flex-direction:column;align-items:stretch;gap:18px;padding:22px 0}
+    .ppath{flex-direction:column;align-items:stretch;width:100%}
+    .pline{display:none}
+    .pline.flowing::after{display:none}
+    .pst{padding:13px 4px;gap:16px}
+    .pdot{width:13px;height:13px}
+    .pdot.active{animation:dotblink 1.5s ease-in-out infinite}
+    .pst .pl{font-size:14px}
+    .pst .pl i{display:inline;margin-left:8px}
+    .ptag{margin-left:0;padding-top:6px;border-top:1px solid var(--line);width:100%}
+
+    /* history : stack each item with vertical breathing room */
+    .hi{flex-direction:column;align-items:flex-start;gap:7px;padding:20px 0}
+    .hi .tm{order:-1;width:auto}
+    .hi .q{font-size:15px;line-height:1.5}
+    .hi .sub{margin-left:0}
+
+    /* detail : bottom sheet (~80% height) */
+    .detail-layout{grid-template-columns:1fr;gap:0}
+    .detail-panel{position:fixed;left:0;right:0;bottom:0;height:80vh;z-index:55;
+      background:var(--paper);border:none;border-radius:20px 20px 0 0;padding:0;margin:0;
+      box-shadow:0 -12px 44px rgba(0,0,0,.28);display:flex;flex-direction:column;
+      transform:translateY(101%);transition:transform .3s cubic-bezier(.4,0,.2,1)}
+    .detail-panel.has-content{transform:translateY(0)}
+    .detail-empty{display:none}
+    .sheet-handle{display:flex;align-items:center;justify-content:center;position:relative;
+      padding:14px 0 10px;flex:none}
+    .sheet-handle .grip{width:42px;height:5px;border-radius:3px;background:var(--muted-2)}
+    .sheet-handle .sheet-close{position:absolute;right:18px;top:12px;border:none;background:none;
+      font-family:var(--body);font-size:13px;color:var(--muted);cursor:pointer}
+    .detail-panel.has-content .detail-content{display:block;overflow-y:auto;flex:1;padding:6px 24px 32px}
+
+    .sheet-overlay{display:block;position:fixed;inset:0;background:rgba(20,20,20,.42);z-index:52;
+      opacity:0;pointer-events:none;transition:opacity .3s}
+    .sheet-overlay.show{opacity:1;pointer-events:auto}
+  }
+  @media (max-width:480px){
+    .nitem{font-size:15px}
+    .fab{right:14px;bottom:16px;padding:14px 18px;font-size:13px}
+    .detail-panel{height:84vh}
+    .d-title{font-size:18px}
+  }
+</style>
+</head>
+<body>
+<div class="frame">
+  <div class="chrome"><div class="dots"><i></i><i></i><i></i></div><div class="urlbar">app.searchlight.ai</div><div style="width:50px"></div></div>
+  <div class="layout">
+    <nav class="nav">
+      <div class="brand">
+        <svg class="logo" viewBox="0 0 40 40" fill="none" stroke="var(--ink)"><circle cx="20" cy="20" r="18.5" stroke-width="1.3"/><circle cx="14" cy="17" r="5.5" stroke-width="1.6"/><circle cx="26" cy="17" r="5.5" stroke-width="1.6"/><circle cx="14" cy="17" r="1.8" fill="var(--ink)" stroke="none"/><circle cx="26" cy="17" r="1.8" fill="var(--ink)" stroke="none"/><path d="M16 27 q4 3 8 0" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>
+        <div class="name">Searchlight</div>
+      </div>
+      <div class="nitem on" data-screen="dash"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M6 6l2 2M16 16l2 2M18 6l-2 2M8 16l-2 2"/><circle cx="12" cy="12" r="3.5"/></svg>ダッシュボード</div>
+      <div class="nitem" data-screen="notes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 4h11l3 3v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M9 4v5h6"/></svg>ノート</div>
+      <div class="nitem" data-screen="history"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2" stroke-linecap="round" stroke-linejoin="round"/></svg>履歴</div>
+      <div class="nitem" data-screen="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.5-2.4 1a7 7 0 0 0-1.7-1l-.4-2.5h-4l-.4 2.5a7 7 0 0 0-1.7 1l-2.4-1-2 3.5 2 1.5a7 7 0 0 0 0 2l-2 1.5 2 3.5 2.4-1a7 7 0 0 0 1.7 1l.4 2.5h4l.4-2.5a7 7 0 0 0 1.7-1l2.4 1 2-3.5-2-1.5a7 7 0 0 0 .1-1z"/></svg>設定</div>
+      <div class="spacer"></div>
+      <div class="nuser"><div class="pa"></div><div><div class="nu-t">リサーチャー</div><div class="nu-s">researcher@…</div></div></div>
+    </nav>
+
+    <div class="content">
+      <!-- mobile top bar (shown ≤760px) -->
+      <div class="mobilebar">
+        <button class="hamburger" id="hamburger" aria-label="メニューを開く">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M4 12h16M4 17h16" stroke-linecap="round"/></svg>
+        </button>
+        <div class="mb-brand">
+          <svg viewBox="0 0 40 40" fill="none" stroke="var(--ink)"><circle cx="20" cy="20" r="18.5" stroke-width="1.3"/><circle cx="14" cy="17" r="5.5" stroke-width="1.6"/><circle cx="26" cy="17" r="5.5" stroke-width="1.6"/><circle cx="14" cy="17" r="1.8" fill="var(--ink)" stroke="none"/><circle cx="26" cy="17" r="1.8" fill="var(--ink)" stroke="none"/><path d="M16 27 q4 3 8 0" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>
+          <span class="name">Searchlight</span>
+        </div>
+        <div class="mb-ava"></div>
+      </div>
+
+      <!-- DASHBOARD -->
+      <section class="screen active" id="dash">
+        <div class="dash">
+          <div>
+            <div class="search">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5" stroke-linecap="round"/></svg>
+              <input placeholder="研究テーマやキーワードを入力">
+              <button class="go">リサーチ開始 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+            </div>
+            <div class="pstrip">
+              <div class="ppath">
+                <div class="pst"><span class="pdot done"></span><span class="pl">収集<i>GEMINI</i></span></div>
+                <div class="pline"></div>
+                <div class="pst"><span class="pdot active"></span><span class="pl">整形・検証<i>CLAUDE</i></span></div>
+                <div class="pline flowing"></div>
+                <div class="pst idle"><span class="pdot"></span><span class="pl">ノート化<i>OBSIDIAN</i></span></div>
+              </div>
+              <span class="ptag">進捗 <b>66%</b> ・ ETC 02:18</span>
+            </div>
+            <div class="meta-row"><span class="k">RESULT</span><span>最終更新 10:24:18</span><div class="acts"><a>コピー</a><a>ノートに保存</a><a>共有</a></div></div>
+            <h1 class="title">生成AIが研究開発プロセスに与える影響と将来展望</h1>
+            <div class="hl"><div class="hh">要点ハイライト</div><ul>
+              <li>生成AIは研究の各フェーズで生産性を向上させ、特に文献調査と仮説生成で顕著な効果。</li>
+              <li>研究者の創造性を拡張する一方、検証可能性とバイアス管理が重要な課題。</li>
+              <li>今後は人間とAIの協調による「拡張的研究パラダイム」への移行が加速する見込み。</li>
+            </ul></div>
+            <div class="sec">概要</div>
+            <p class="lead">本レポートでは、生成AIが研究開発プロセスに与える影響について、最新の学術文献や業界レポートをもとに多角的に分析する。特に、研究プロセスの効率化、知識探索の拡張、倫理的・方法論的課題、および将来展望に焦点を当てる。</p>
+          </div>
+          <aside class="srccol">
+            <div class="sh"><span class="e">Sources</span><b>12</b></div>
+            <div class="si"><div class="st"><span class="num">01</span>The AI revolution in research: A survey of recent advances</div><div class="so">Nature Reviews ・ 2024</div></div>
+            <div class="si"><div class="st"><span class="num">02</span>Generative AI in scientific discovery</div><div class="so">Science ・ 2024</div></div>
+            <div class="si"><div class="st"><span class="num">03</span>AI for literature review: Methodologies and tools</div><div class="so">ACM Computing Surveys ・ 2023</div></div>
+            <div class="si"><div class="st"><span class="num">04</span>Large language models and research productivity</div><div class="so">arXiv:2311.09268 ・ 2023</div></div>
+            <div class="si"><div class="st"><span class="num">05</span>Ethical considerations of AI in research</div><div class="so">Nature Machine Intelligence ・ 2023</div></div>
+          </aside>
+        </div>
+      </section>
+
+      <!-- NOTES -->
+      <section class="screen" id="notes">
+        <div class="scr-title">ノート</div>
+        <div class="detail-layout">
+          <div>
+            <div class="filter"><span class="fbtn on">すべて</span><span class="fbtn">検証済み</span><span class="fbtn">下書き</span></div>
+            <div class="note" data-article="a1"><div class="nt">生成AIが研究開発プロセスに与える影響と将来展望</div><div class="mrow"><span>検証済み</span><span class="dot">・</span><span class="tag">#AI #研究</span><span class="dot">・</span><span>12 ソース</span><span class="dot">・</span><span>2024/05/22</span></div></div>
+            <div class="note" data-article="a2"><div class="nt">マルチエージェントによるリサーチ自動化の現在地</div><div class="mrow"><span>検証済み</span><span class="dot">・</span><span class="tag">#エージェント</span><span class="dot">・</span><span>8 ソース</span><span class="dot">・</span><span>2024/05/19</span></div></div>
+            <div class="note" data-article="a3"><div class="nt">ベクトル検索とRAGの実務的な使い分け</div><div class="mrow"><span style="color:var(--accent)">検証待ち</span><span class="dot">・</span><span class="tag">#RAG</span><span class="dot">・</span><span>5 ソース</span><span class="dot">・</span><span>2024/05/17</span></div></div>
+            <div class="note" data-article="a4"><div class="nt">国内SaaS市場の競合マッピング 2024</div><div class="mrow"><span>検証済み</span><span class="dot">・</span><span class="tag">#市場調査</span><span class="dot">・</span><span>15 ソース</span><span class="dot">・</span><span>2024/05/14</span></div></div>
+            <div class="note" data-article="a5"><div class="nt">プロンプト設計のベストプラクティス総まとめ</div><div class="mrow"><span>検証済み</span><span class="dot">・</span><span class="tag">#プロンプト</span><span class="dot">・</span><span>7 ソース</span><span class="dot">・</span><span>2024/05/11</span></div></div>
+          </div>
+          <aside class="detail-panel" id="notes-detail">
+            <div class="sheet-handle"><div class="grip"></div><button class="sheet-close">閉じる</button></div>
+            <div class="detail-empty">← ノートを選択すると、<br>ここに内容が表示されます</div>
+            <div class="detail-content"></div>
+          </aside>
+        </div>
+      </section>
+
+      <!-- HISTORY -->
+      <section class="screen" id="history">
+        <div class="scr-title">履歴</div>
+        <div class="detail-layout">
+          <div>
+            <div class="daygrp">今日</div>
+            <div class="hi" data-article="a1"><div class="tm">10:24</div><div class="q">生成AIが研究開発に与える影響</div><div class="sub">12ソース ・ 完了</div></div>
+            <div class="hi" data-article="a2"><div class="tm">09:02</div><div class="q">エージェント型リサーチの最新動向</div><div class="sub">8ソース ・ 完了</div></div>
+            <div class="daygrp">昨日</div>
+            <div class="hi" data-article="a3"><div class="tm">18:47</div><div class="q">RAG実装パターンの比較</div><div class="sub">5ソース ・ 完了</div></div>
+            <div class="hi" data-article="a4"><div class="tm">14:10</div><div class="q">国内SaaS競合マッピング</div><div class="sub">15ソース ・ 完了</div></div>
+            <div class="daygrp">今週</div>
+            <div class="hi" data-article="a5"><div class="tm">5/19</div><div class="q">プロンプト設計のベストプラクティス</div><div class="sub">7ソース ・ 完了</div></div>
+          </div>
+          <aside class="detail-panel" id="history-detail">
+            <div class="sheet-handle"><div class="grip"></div><button class="sheet-close">閉じる</button></div>
+            <div class="detail-empty">← 履歴を選択すると、<br>ここに内容が表示されます</div>
+            <div class="detail-content"></div>
+          </aside>
+        </div>
+      </section>
+
+      <!-- SETTINGS -->
+      <section class="screen" id="settings">
+        <div class="scr-title">設定</div>
+        <div class="settings">
+          <div class="prof"><div class="pa"></div><div><div class="pn">リサーチャー</div><div class="pe">researcher@searchlight.ai</div></div></div>
+          <div class="sgrp">エンジン連携</div>
+          <div class="sitem"><div class="si-c"><div class="si-t">Gemini ・ 収集</div><div class="si-s">Deep Research / 情報収集</div></div><span class="conn"><span class="d"></span>接続済み</span></div>
+          <div class="sitem"><div class="si-c"><div class="si-t">Claude ・ 整形・検証</div><div class="si-s">事実検証 / 構造化</div></div><span class="conn"><span class="d"></span>接続済み</span></div>
+          <div class="sitem"><div class="si-c"><div class="si-t">Obsidian ・ ノート化</div><div class="si-s">vault に自動保存（/Documents/Obsidian）</div></div><span class="conn"><span class="d"></span>接続済み</span></div>
+          <div class="sgrp">リサーチ設定</div>
+          <div class="sitem"><div class="si-c"><div class="si-t">リサーチの深さ</div><div class="si-s">標準（最大200ソース）</div></div><span class="val">標準 ▾</span></div>
+          <div class="sitem"><div class="si-c"><div class="si-t">完了後に自動でノート保存</div></div><div class="toggle"></div></div>
+          <div class="sitem"><div class="si-c"><div class="si-t">検証ステップを常に通す</div></div><div class="toggle"></div></div>
+          <div class="sgrp">表示</div>
+          <div class="sitem"><div class="si-c"><div class="si-t">テーマ</div><div class="si-s">ライト（ミニマル）</div></div><span class="val">ライト ▾</span></div>
+        </div>
+      </section>
+    </div>
+  </div>
+  <div class="overlay" id="overlay"></div>
+  <div class="sheet-overlay" id="sheet-overlay"></div>
+  <button class="fab" id="fab" aria-label="新規リサーチ">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
+    新規リサーチ
+  </button>
+</div>
+
+<script>
+  // ----- screen nav -----
+  const items = document.querySelectorAll('.nitem');
+  const screens = document.querySelectorAll('.screen');
+  const navEl = document.querySelector('.nav');
+  const overlayEl = document.getElementById('overlay');
+  function closeDrawer(){ navEl.classList.remove('open'); if(overlayEl) overlayEl.classList.remove('show'); }
+  function openDrawer(){ navEl.classList.add('open'); if(overlayEl) overlayEl.classList.add('show'); }
+  const sheetOverlay = document.getElementById('sheet-overlay');
+  function closeSheet(){
+    document.querySelectorAll('.detail-panel').forEach(function(p){ p.classList.remove('has-content'); });
+    document.querySelectorAll('.note, .hi').forEach(function(x){ x.classList.remove('selected'); });
+    if(sheetOverlay) sheetOverlay.classList.remove('show');
+  }
+  function goScreen(id){
+    items.forEach(function(x){ x.classList.toggle('on', x.getAttribute('data-screen')===id); });
+    screens.forEach(function(s){ s.classList.toggle('active', s.id === id); });
+    closeSheet();
+    document.querySelector('.content').scrollTop = 0;
+    window.scrollTo(0,0);
+  }
+  items.forEach(function(n){
+    n.addEventListener('click', function(){
+      goScreen(n.getAttribute('data-screen'));
+      closeDrawer();
+    });
+  });
+  // hamburger / overlay
+  var hb = document.getElementById('hamburger');
+  if(hb){ hb.addEventListener('click', openDrawer); }
+  if(overlayEl){ overlayEl.addEventListener('click', closeDrawer); }
+  // FAB -> 新規リサーチ（ダッシュボードへ移動し検索欄へ）
+  var fab = document.getElementById('fab');
+  if(fab){ fab.addEventListener('click', function(){
+    goScreen('dash');
+    var inp = document.querySelector('#dash .search input');
+    if(inp){ inp.focus(); inp.scrollIntoView({behavior:'smooth', block:'center'}); }
+  }); }
+  // ----- filters (visual) -----
+  document.querySelectorAll('.filter').forEach(function(f){
+    f.querySelectorAll('.fbtn').forEach(function(b){
+      b.addEventListener('click', function(){ f.querySelectorAll('.fbtn').forEach(function(x){x.classList.remove('on');}); b.classList.add('on'); });
+    });
+  });
+
+  // ----- article dataset (sample) -----
+  const articles = {
+    a1:{title:"生成AIが研究開発プロセスに与える影響と将来展望",status:"検証済み",date:"2024/05/22",
+      highlights:["生成AIは研究の各フェーズで生産性を向上させ、特に文献調査と仮説生成で顕著な効果。","研究者の創造性を拡張する一方、検証可能性とバイアス管理が重要な課題。","今後は人間とAIの協調による「拡張的研究パラダイム」への移行が加速する見込み。"],
+      summary:"生成AIが研究開発プロセスに与える影響を、最新の学術文献や業界レポートをもとに多角的に分析。研究の効率化、知識探索の拡張、倫理的・方法論的課題に焦点を当てる。",
+      points:[{h:"文献調査の自動化",b:"網羅的な情報収集と整理を高速化し、調査の抜け漏れを減らす。"},{h:"仮説生成の支援",b:"アイデア創出を促し、新しい研究の切り口を広げる。"},{h:"再現性の確保",b:"検証可能性の担保と研究倫理が、活用の前提となる。"}],
+      sources:[{t:"The AI revolution in research",s:"Nature Reviews ・ 2024"},{t:"Generative AI in scientific discovery",s:"Science ・ 2024"},{t:"AI for literature review",s:"ACM Computing Surveys ・ 2023"}]},
+    a2:{title:"マルチエージェントによるリサーチ自動化の現在地",status:"検証済み",date:"2024/05/19",
+      highlights:["複数エージェントの分業で、調査・要約・検証を並列化できる。","オーケストレーションの設計がコストと品質を大きく左右する。","人間のレビューを残す“ヒューマン・イン・ザ・ループ”が依然有効。"],
+      summary:"マルチエージェント構成によるリサーチ自動化の到達点と限界を整理。役割分担と統括（オーケストレーション）の設計が成否を分ける。",
+      points:[{h:"役割分担",b:"収集・要約・検証を専門エージェントに分けると精度が上がる。"},{h:"コスト管理",b:"並列実行は速いが、トークン消費の設計が必須。"}],
+      sources:[{t:"Multi-agent systems for research",s:"arXiv ・ 2024"},{t:"Orchestrating LLM agents",s:"ACM ・ 2024"}]},
+    a3:{title:"ベクトル検索とRAGの実務的な使い分け",status:"検証待ち",date:"2024/05/17",
+      highlights:["RAGは最新情報や社内文書の参照に有効。","チャンク設計と埋め込みモデルの選定が品質の鍵。","小規模ならベクトルDBより素朴な検索で十分な場合も。"],
+      summary:"RAGとベクトル検索を、実務でどう使い分けるかを整理。データ規模と更新頻度で最適解が変わる。",
+      points:[{h:"チャンク設計",b:"粒度が粗いと精度が落ち、細かすぎると文脈が切れる。"},{h:"コスト対効果",b:"小規模では過剰なベクトルDB導入は避ける。"}],
+      sources:[{t:"RAG best practices",s:"arXiv ・ 2023"}]},
+    a4:{title:"国内SaaS市場の競合マッピング 2024",status:"検証済み",date:"2024/05/14",
+      highlights:["垂直特化型SaaSの伸びが顕著。","価格より“導入後の定着支援”が差別化要因に。","AI機能の有無が選定基準として急浮上。"],
+      summary:"国内SaaS市場の主要プレイヤーをカテゴリ別にマッピングし、競争軸の変化を分析。",
+      points:[{h:"垂直特化",b:"業種特化型が水平型のシェアを侵食しつつある。"},{h:"定着支援",b:"オンボーディングとカスタマーサクセスが解約率を左右。"}],
+      sources:[{t:"Japan SaaS Landscape 2024",s:"業界レポート ・ 2024"}]},
+    a5:{title:"プロンプト設計のベストプラクティス総まとめ",status:"検証済み",date:"2024/05/11",
+      highlights:["明確な指示・具体例・段階的思考の指定が効果的。","役割と出力形式を先に固定すると安定する。","ネガティブ例（やってほしくないこと）も有効。"],
+      summary:"プロンプト設計の定石を体系的に整理。指示の明確化と出力形式の固定が品質を底上げする。",
+      points:[{h:"出力形式の固定",b:"JSON等のスキーマを先に渡すと崩れにくい。"},{h:"具体例の提示",b:"良い例・悪い例を添えると意図が伝わる。"}],
+      sources:[{t:"Prompt engineering overview",s:"docs ・ 2024"}]}
+  };
+
+  function renderArticle(a){
+    var hls = a.highlights.map(function(h){return '<li>'+h+'</li>';}).join('');
+    var pts = a.points.map(function(p){return '<div class="d-pt"><div class="h">'+p.h+'</div><p>'+p.b+'</p></div>';}).join('');
+    var srcs = a.sources.map(function(s,i){return '<div class="d-src"><span class="num">'+String(i+1).padStart(2,'0')+'</span>'+s.t+'<div class="so">'+s.s+'</div></div>';}).join('');
+    var statusColor = a.status === '検証待ち' ? 'color:var(--accent)' : '';
+    return ''
+      + '<div class="d-eyebrow"><span class="st" style="'+statusColor+'">'+a.status+'</span><span>・</span><span>'+a.date+'</span><span>・</span><span>'+a.sources.length+' ソース</span></div>'
+      + '<div class="d-title">'+a.title+'</div>'
+      + '<div class="d-sec">要点ハイライト</div><ul class="d-hl">'+hls+'</ul>'
+      + '<div class="d-sec">概要</div><p class="d-lead">'+a.summary+'</p>'
+      + '<div class="d-sec">主なポイント</div>'+pts
+      + '<div class="d-sec" style="margin-top:24px">参照ソース</div>'+srcs
+      + '<div class="d-actions">'
+      +   '<div class="d-btn primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 4 8v8l8 5 8-5V8z"/><path d="M12 3v18M4 8l8 5 8-5"/></svg>Obsidianで開く</div>'
+      +   '<div class="d-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>コピー</div>'
+      + '</div>';
+  }
+
+  function wireDetail(listSelector, panelId){
+    var panel = document.getElementById(panelId);
+    var content = panel.querySelector('.detail-content');
+    document.querySelectorAll(listSelector).forEach(function(el){
+      el.addEventListener('click', function(){
+        document.querySelectorAll(listSelector).forEach(function(x){ x.classList.remove('selected'); });
+        el.classList.add('selected');
+        var a = articles[el.getAttribute('data-article')];
+        if(!a) return;
+        content.innerHTML = renderArticle(a);
+        panel.classList.add('has-content');
+        if(sheetOverlay) sheetOverlay.classList.add('show');   // mobile bottom-sheet backdrop
+        content.scrollTop = 0;
+      });
+    });
+  }
+  wireDetail('#notes .note', 'notes-detail');
+  wireDetail('#history .hi', 'history-detail');
+
+  // close bottom sheet (mobile)
+  if(sheetOverlay){ sheetOverlay.addEventListener('click', closeSheet); }
+  document.querySelectorAll('.sheet-close').forEach(function(b){ b.addEventListener('click', closeSheet); });
+</script>
+</body>
+</html>
